@@ -2,6 +2,8 @@ use crate::PDRAnswer::*;
 use std::fmt;
 use std::fmt::Debug;
 
+mod instances;
+
 pub trait CLat {
     // type Info T
     type Info;
