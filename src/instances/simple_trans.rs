@@ -1,11 +1,11 @@
+use crate::*;
 use std::collections::HashSet;
 use std::hash::Hash;
-use crate::*;
 
 #[derive(Debug)]
-struct PS<T> {
-    all: HashSet<T>,
-    subset: HashSet<T>,
+pub struct PS<T> {
+    pub all: HashSet<T>,
+    pub subset: HashSet<T>,
 }
 
 impl<T: Eq + Hash + Clone> CLat for PS<T> {
@@ -75,7 +75,7 @@ impl<T: Clone + Hash + Eq> Heuristics<PS<T>> for PS<T> {
     }
 }
 
-fn forward_ps<'a, T: Eq + Hash + Clone>(
+pub fn forward_ps<'a, T: Eq + Hash + Clone>(
     init: &'a HashSet<T>,
     delta: &'a dyn Fn(&T) -> HashSet<T>,
 ) -> impl Fn(&PS<T>) -> PS<T> + 'a {
@@ -94,9 +94,9 @@ fn forward_ps<'a, T: Eq + Hash + Clone>(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
+    use crate::instances::simple_trans::{forward_ps, PS};
     use crate::*;
-    use crate::instances::simple_trans::{PS, forward_ps};
+    use std::collections::HashSet;
     fn is_valid<T>(result: PDRAnswer<T>) -> bool {
         match result {
             Valid(_) => true,
@@ -122,7 +122,7 @@ mod tests {
             all,
             subset: HashSet::from_iter(1..5),
         };
-        let result = lt_pdr(&f, alpha);
+        let result = lt_pdr(Options::default_opt(), &f, alpha);
         assert!(is_valid(result));
     }
     #[test]
@@ -134,7 +134,7 @@ mod tests {
             all,
             subset: HashSet::from_iter(1..3),
         };
-        let result = lt_pdr(&f, alpha);
+        let result = lt_pdr(Options::default_opt(), &f, alpha);
         assert!(!is_valid(result));
     }
 }
