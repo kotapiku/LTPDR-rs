@@ -3,73 +3,73 @@ use std::collections::HashSet;
 use std::hash::Hash;
 
 #[derive(Debug)]
-pub struct PS<T> {
-    pub all: HashSet<T>,
+pub struct PS<'a, T> {
+    pub all: &'a HashSet<T>,
     pub subset: HashSet<T>,
 }
 
-impl<T: Eq + Hash + Clone> CLat for PS<T> {
+impl<'a, T: Eq + Hash + Clone> CLat for PS<'a, T> {
     type Info = ();
     fn leq(&self, rhs: &Self) -> (bool, Self::Info) {
         (self.subset.is_subset(&rhs.subset), ())
     }
     fn bot(&self) -> Self {
         PS {
-            all: self.all.clone(),
+            all: self.all,
             subset: HashSet::new(),
         }
     }
     fn top(&self) -> Self {
         PS {
-            all: self.all.clone(),
+            all: self.all,
             subset: self.all.clone(),
         }
     }
     fn meet(&self, rhs: &Self) -> Self {
         PS {
-            all: self.all.clone(),
+            all: self.all,
             subset: self.subset.intersection(&rhs.subset).cloned().collect(),
         }
     }
 }
 
-impl<T: Clone + Hash + Eq> Heuristics<PS<T>> for PS<T> {
-    fn f_candidate(&self, alpha: &PS<T>, _: &<PS<T> as CLat>::Info) -> PS<T> {
+impl<'a, T: Clone + Hash + Eq> Heuristics<PS<'a, T>> for PS<'a, T> {
+    fn f_candidate(&self, alpha: &PS<'a, T>, _: &<PS<'a, T> as CLat>::Info) -> PS<'a, T> {
         PS {
-            all: self.all.clone(),
+            all: self.all,
             subset: self.subset.difference(&alpha.subset).cloned().collect(),
         }
     }
     fn f_decide(
         &self,
-        ci: &PS<T>,
-        f: &dyn Fn(&PS<T>) -> PS<T>,
-        _solver: &<PS<T> as CLat>::Info,
-    ) -> PS<T> {
+        ci: &PS<'a, T>,
+        f: &dyn Fn(&PS<'a, T>) -> PS<'a, T>,
+        _solver: &<PS<'a, T> as CLat>::Info,
+    ) -> PS<'a, T> {
         let mut subset: HashSet<T> = self.subset.clone();
         subset.retain(|x: &T| {
             let fx: PS<T> = f(&PS {
-                all: self.all.clone(),
+                all: self.all,
                 subset: HashSet::from([x.clone()]),
             });
             !(fx.subset.is_disjoint(&ci.subset))
         });
         PS {
-            all: self.all.clone(),
+            all: self.all,
             subset,
         }
     }
     fn f_conflict(
         &self,
-        ci: &PS<T>,
-        f: &dyn Fn(&PS<T>) -> PS<T>,
-        _solver: &<PS<T> as CLat>::Info,
-    ) -> PS<T> {
+        ci: &PS<'a, T>,
+        f: &dyn Fn(&PS<'a, T>) -> PS<'a, T>,
+        _solver: &<PS<'a, T> as CLat>::Info,
+    ) -> PS<'a, T> {
         let fxi1 = f(self);
         let ci_fxi1: HashSet<T> = ci.subset.difference(&fxi1.subset).cloned().collect();
         let subset: HashSet<T> = self.all.difference(&ci_fxi1).cloned().collect();
         PS {
-            all: self.all.clone(),
+            all: self.all,
             subset,
         }
     }
@@ -78,7 +78,7 @@ impl<T: Clone + Hash + Eq> Heuristics<PS<T>> for PS<T> {
 pub fn forward_ps<'a, T: Eq + Hash + Clone>(
     init: &'a HashSet<T>,
     delta: &'a dyn Fn(&T) -> HashSet<T>,
-) -> impl Fn(&PS<T>) -> PS<T> + 'a {
+) -> impl Fn(&PS<'a, T>) -> PS<'a, T> + 'a {
     |ps| {
         let mut subset: HashSet<T> = HashSet::new();
         subset = subset.union(init).cloned().collect();
@@ -86,7 +86,7 @@ pub fn forward_ps<'a, T: Eq + Hash + Clone>(
             subset = subset.union(&delta(s)).cloned().collect();
         }
         PS {
-            all: ps.all.clone(),
+            all: ps.all,
             subset,
         }
     }

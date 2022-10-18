@@ -6,7 +6,7 @@ use std::collections::HashSet;
 
 fn main() {
     let init = HashSet::from([1]);
-    let all = HashSet::from_iter(1..6);
+    let all = &HashSet::from_iter(1..6);
     let f = forward_ps(&init, &delta1);
     let alpha = PS {
         all,
