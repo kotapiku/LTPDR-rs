@@ -114,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn unit_case1() {
+    fn case1() {
         let init = HashSet::from([1]);
         let all = HashSet::from_iter(1..6);
         let f = forward_ps(&init, &delta1);
@@ -126,7 +126,7 @@ mod tests {
         assert!(is_valid(result));
     }
     #[test]
-    fn unit_case2() {
+    fn case2() {
         let init = HashSet::from([1]);
         let all = HashSet::from_iter(1..6);
         let f = forward_ps(&init, &delta1);
