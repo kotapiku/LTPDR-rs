@@ -1,5 +1,5 @@
 extern crate ltpdr;
-use ltpdr::instances::simple_trans::{forward_ps, PS};
+use ltpdr::instances::simple_trans::{forward_ps, heuristics_sts, PS};
 use ltpdr::Verbosity::*;
 use ltpdr::*;
 use std::collections::HashSet;
@@ -12,7 +12,7 @@ fn main() {
         all,
         subset: HashSet::from_iter(1..5),
     };
-    let result = lt_pdr(Options { print: PrintAll }, &f, alpha);
+    let result = lt_pdr(Options { print: PrintAll }, heuristics_sts(), &f, alpha);
     println!("{result}");
 }
 

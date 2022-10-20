@@ -10,7 +10,7 @@ pub struct PS<'a, T> {
 
 impl<'a, T: Eq + Hash + Clone> CLat for PS<'a, T> {
     type Info = ();
-    fn leq(&self, rhs: &Self) -> (bool, Self::Info) {
+    fn le(&self, rhs: &Self) -> (bool, Self::Info) {
         (self.subset.is_subset(&rhs.subset), ())
     }
     fn bot(&self) -> Self {
@@ -33,45 +33,50 @@ impl<'a, T: Eq + Hash + Clone> CLat for PS<'a, T> {
     }
 }
 
-impl<'a, T: Clone + Hash + Eq> Heuristics<PS<'a, T>> for PS<'a, T> {
-    fn f_candidate(&self, alpha: &PS<'a, T>, _: &<PS<'a, T> as CLat>::Info) -> PS<'a, T> {
-        PS {
-            all: self.all,
-            subset: self.subset.difference(&alpha.subset).cloned().collect(),
-        }
-    }
-    fn f_decide(
-        &self,
-        ci: &PS<'a, T>,
-        f: &dyn Fn(&PS<'a, T>) -> PS<'a, T>,
-        _solver: &<PS<'a, T> as CLat>::Info,
-    ) -> PS<'a, T> {
-        let mut subset: HashSet<T> = self.subset.clone();
-        subset.retain(|x: &T| {
-            let fx: PS<T> = f(&PS {
-                all: self.all,
-                subset: HashSet::from([x.clone()]),
+pub fn heuristics_sts<'a, T: Clone + Hash + Eq>() -> Heuristics<PS<'a, T>> {
+    let f_candidate = Box::new(
+        |xn1: &PS<'a, T>, alpha: &PS<'a, T>, _: &<PS<'a, T> as CLat>::Info| PS {
+            all: xn1.all,
+            subset: xn1.subset.difference(&alpha.subset).cloned().collect(),
+        },
+    );
+    let f_decide = Box::new(
+        |xi1: &PS<'a, T>,
+         ci: &PS<'a, T>,
+         f: &dyn Fn(&PS<'a, T>) -> PS<'a, T>,
+         _info: &<PS<'a, T> as CLat>::Info| {
+            let mut subset: HashSet<T> = xi1.subset.clone();
+            subset.retain(|x: &T| {
+                let fx: PS<T> = f(&PS {
+                    all: xi1.all,
+                    subset: HashSet::from([x.clone()]),
+                });
+                !(fx.subset.is_disjoint(&ci.subset))
             });
-            !(fx.subset.is_disjoint(&ci.subset))
-        });
-        PS {
-            all: self.all,
-            subset,
-        }
-    }
-    fn f_conflict(
-        &self,
-        ci: &PS<'a, T>,
-        f: &dyn Fn(&PS<'a, T>) -> PS<'a, T>,
-        _solver: &<PS<'a, T> as CLat>::Info,
-    ) -> PS<'a, T> {
-        let fxi1 = f(self);
-        let ci_fxi1: HashSet<T> = ci.subset.difference(&fxi1.subset).cloned().collect();
-        let subset: HashSet<T> = self.all.difference(&ci_fxi1).cloned().collect();
-        PS {
-            all: self.all,
-            subset,
-        }
+            PS {
+                all: xi1.all,
+                subset,
+            }
+        },
+    );
+    let f_conflict = Box::new(
+        |xi1: &PS<'a, T>,
+         ci: &PS<'a, T>,
+         f: &dyn Fn(&PS<'a, T>) -> PS<'a, T>,
+         _info: &<PS<'a, T> as CLat>::Info| {
+            let fxi1 = f(xi1);
+            let ci_fxi1: HashSet<T> = ci.subset.difference(&fxi1.subset).cloned().collect();
+            let subset: HashSet<T> = xi1.all.difference(&ci_fxi1).cloned().collect();
+            PS {
+                all: xi1.all,
+                subset,
+            }
+        },
+    );
+    Heuristics {
+        f_candidate,
+        f_decide,
+        f_conflict,
     }
 }
 
@@ -94,7 +99,7 @@ pub fn forward_ps<'a, T: Eq + Hash + Clone>(
 
 #[cfg(test)]
 mod tests {
-    use crate::instances::simple_trans::{forward_ps, PS};
+    use crate::instances::simple_trans::{forward_ps, heuristics_sts, PS};
     use crate::*;
     use std::collections::HashSet;
     fn is_valid<T>(result: PDRAnswer<T>) -> bool {
@@ -122,7 +127,7 @@ mod tests {
             all,
             subset: HashSet::from_iter(1..5),
         };
-        let result = lt_pdr(Options::default_opt(), &f, alpha);
+        let result = lt_pdr(Options::default_opt(), heuristics_sts(), &f, alpha);
         assert!(is_valid(result));
     }
     #[test]
@@ -134,7 +139,7 @@ mod tests {
             all,
             subset: HashSet::from_iter(1..3),
         };
-        let result = lt_pdr(Options::default_opt(), &f, alpha);
+        let result = lt_pdr(Options::default_opt(), heuristics_sts(), &f, alpha);
         assert!(!is_valid(result));
     }
 }

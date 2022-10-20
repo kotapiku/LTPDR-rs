@@ -7,7 +7,7 @@ pub mod instances;
 
 pub trait CLat {
     type Info;
-    fn leq(&self, rhs: &Self) -> (bool, Self::Info);
+    fn le(&self, rhs: &Self) -> (bool, Self::Info);
     fn bot(&self) -> Self;
     fn top(&self) -> Self;
     fn meet(&self, rhs: &Self) -> Self;
@@ -53,11 +53,10 @@ impl<T> fmt::Display for PDRAnswer<T> {
     }
 }
 
-// TODO: T = self
-pub trait Heuristics<T: CLat> {
-    fn f_candidate(&self, alpha: &T, solver: &T::Info) -> T;
-    fn f_decide(&self, ci: &T, f: &dyn Fn(&T) -> T, solver: &T::Info) -> T;
-    fn f_conflict(&self, ci: &T, f: &dyn Fn(&T) -> T, solver: &T::Info) -> T;
+pub struct Heuristics<T: CLat> {
+    pub f_candidate: Box<dyn Fn(&T, &T, &T::Info) -> T>,
+    pub f_decide: Box<dyn Fn(&T, &T, &dyn Fn(&T) -> T, &T::Info) -> T>,
+    pub f_conflict: Box<dyn Fn(&T, &T, &dyn Fn(&T) -> T, &T::Info) -> T>,
 }
 
 pub struct Options {
@@ -90,8 +89,9 @@ fn print_kt_kl<T: Debug>(opt: &Options, current: &KTKl<T>, rule: &str) {
     }
 }
 
-pub fn lt_pdr<T: CLat + Heuristics<T> + Debug>(
+pub fn lt_pdr<T: CLat + Debug>(
     opt: Options,
+    heuristics: Heuristics<T>,
     f: &dyn Fn(&T) -> T,
     alpha: T,
 ) -> PDRAnswer<T> {
@@ -109,7 +109,7 @@ pub fn lt_pdr<T: CLat + Heuristics<T> + Debug>(
         }
 
         let xn1 = current.0.last().unwrap();
-        let (result1, solver1) = xn1.leq(&alpha);
+        let (result1, info1) = xn1.le(&alpha);
         if result1 {
             current.0.push(alpha.top());
             current.1 = Vec::new();
@@ -118,7 +118,9 @@ pub fn lt_pdr<T: CLat + Heuristics<T> + Debug>(
         } else {
             match current.1.pop() {
                 None => {
-                    current.1.push(xn1.f_candidate(&alpha, &solver1));
+                    current
+                        .1
+                        .push((heuristics.f_candidate)(xn1, &alpha, &info1));
                     print_kt_kl(&opt, &current, "--Candidate--");
                     continue;
                 }
@@ -127,14 +129,14 @@ pub fn lt_pdr<T: CLat + Heuristics<T> + Debug>(
                     // n-1 - ((n-1) - (i+1) + 1) = i
                     let i = current.0.len() - current.1.len();
                     let xi1 = current.0.get(i - 2).unwrap();
-                    let (result2, solver2) = ci.leq(&f(xi1));
+                    let (result2, info2) = ci.le(&f(xi1));
                     if result2 {
-                        let x = xi1.f_decide(&ci, f, &solver2);
+                        let x = (heuristics.f_decide)(xi1, &ci, f, &info2);
                         current.1.push(ci);
                         current.1.push(x);
                         print_kt_kl(&opt, &current, "--Decide--");
                     } else {
-                        let x = xi1.f_conflict(&ci, f, &solver2);
+                        let x = (heuristics.f_conflict)(xi1, &ci, f, &info2);
                         for v in current.0[..i].iter_mut() {
                             *v = v.meet(&x);
                         }
@@ -150,7 +152,7 @@ pub fn lt_pdr<T: CLat + Heuristics<T> + Debug>(
 fn check_valid<T: CLat>(xs: &KTSeq<T>) -> bool {
     let mut result = false;
     for i in 0..(xs.len() - 1) {
-        result |= xs[i + 1].leq(&xs[i]).0;
+        result |= xs[i + 1].le(&xs[i]).0;
     }
     result
 }
