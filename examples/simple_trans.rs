@@ -12,7 +12,7 @@ fn main() {
         all,
         subset: HashSet::from_iter(1..5),
     };
-    let result = lt_pdr(Options { print: PrintAll }, heuristics_sts(), &f, alpha);
+    let result = lt_pdr(Config { print: PrintAll }, heuristics_sts(), &f, alpha);
     println!("{result}");
 }
 

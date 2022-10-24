@@ -127,7 +127,7 @@ mod tests {
             all,
             subset: HashSet::from_iter(1..5),
         };
-        let result = lt_pdr(Options::default_opt(), heuristics_sts(), &f, alpha);
+        let result = lt_pdr(Config::default_opt(), heuristics_sts(), &f, alpha);
         assert!(is_valid(result));
     }
     #[test]
@@ -139,7 +139,7 @@ mod tests {
             all,
             subset: HashSet::from_iter(1..3),
         };
-        let result = lt_pdr(Options::default_opt(), heuristics_sts(), &f, alpha);
+        let result = lt_pdr(Config::default_opt(), heuristics_sts(), &f, alpha);
         assert!(!is_valid(result));
     }
 }

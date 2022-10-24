@@ -59,7 +59,7 @@ pub struct Heuristics<T: CLat> {
     pub f_conflict: Box<dyn Fn(&T, &T, &dyn Fn(&T) -> T, &T::Info) -> T>,
 }
 
-pub struct Options {
+pub struct Config {
     pub print: Verbosity,
     // optMaxStep: Option<u32>,
 }
@@ -69,12 +69,12 @@ pub enum Verbosity {
     NoPrint,
 }
 
-impl Options {
-    pub fn default_opt() -> Options {
-        Options { print: NoPrint }
+impl Config {
+    pub fn default_opt() -> Config {
+        Config { print: NoPrint }
     }
 }
-fn print_kt_kl<T: Debug>(opt: &Options, current: &KTKl<T>, rule: &str) {
+fn print_kt_kl<T: Debug>(opt: &Config, current: &KTKl<T>, rule: &str) {
     match opt.print {
         NoPrint => (),
         PrintAll => {
@@ -90,7 +90,7 @@ fn print_kt_kl<T: Debug>(opt: &Options, current: &KTKl<T>, rule: &str) {
 }
 
 pub fn lt_pdr<T: CLat + Debug>(
-    opt: Options,
+    opt: Config,
     heuristics: Heuristics<T>,
     f: &dyn Fn(&T) -> T,
     alpha: T,
@@ -102,10 +102,10 @@ pub fn lt_pdr<T: CLat + Debug>(
         let KTKl(xs, cs) = &current;
 
         if check_valid(xs) {
-            return Valid(current.0); // valid
+            return Valid(current.0);
         }
         if xs.len() == cs.len() {
-            return InValid(current.1); // invalid
+            return InValid(current.1);
         }
 
         let xn1 = current.0.last().unwrap();
@@ -126,7 +126,6 @@ pub fn lt_pdr<T: CLat + Debug>(
                 }
                 Some(ci) => {
                     // ([X_1, ..., X_{n-1}], [C_{n-1}, ..., C_{i+1}])
-                    // n-1 - ((n-1) - (i+1) + 1) = i
                     let i = current.0.len() - current.1.len();
                     let xi1 = current.0.get(i - 2).unwrap();
                     let (result2, info2) = ci.le(&f(xi1));

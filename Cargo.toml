@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 num = "0.1"
+good_lp = { version = "0.3.2", features = ["highs"], default-features = false }
