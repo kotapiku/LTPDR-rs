@@ -1,46 +1,75 @@
 extern crate ltpdr;
 // use ltpdr::instances::simple_trans::{forward_ps, PS};
+use good_lp::{default_solver, variable, variables, Solution, SolverModel};
 use ltpdr::Verbosity::*;
 use ltpdr::*;
-use std::collections::{HashMap, HashSet};
 use num::traits::{One, Zero};
 use num::{one, zero};
-use good_lp::{variables, variable, default_solver, SolverModel, Solution};
-
+use std::collections::HashMap;
+use std::ops::{Add, Mul};
 
 fn main() {
-    let bad_states = |n: KeyInt| { n == 5 };
+    let bad_states = |n: KeyInt| n == 5;
     let state_num = 6;
-    let delta1: Delta<f64> =
-        HashMap::from([
-            // TODO
-            (0, vec![HashMap::from([(1, 0.5), (2, 0.5)])]),
-            (1, vec![HashMap::from([(0, 0.5), (3, 0.5)])]),
-            (2, vec![HashMap::from([(4, 0.5), (5, 0.5)]), HashMap::from([(1, 1.0)])]),
-            (3, vec![HashMap::from([(4, 1f64/3f64), (5, 2f64/3f64)])]),
-            (4, vec![HashMap::from([(4, 1.0)])]),
-            (5, vec![HashMap::from([(5, 1.0)])]),
-            ]);
+    let delta1: Delta<f64> = |s| match s {
+        0 => vec![HashMap::from([(1, 0.5), (2, 0.5)])],
+        1 => vec![HashMap::from([(0, 0.5), (3, 0.5)])],
+        2 => vec![
+            HashMap::from([(4, 0.5), (5, 0.5)]),
+            HashMap::from([(1, 1.0)]),
+        ],
+        3 => vec![HashMap::from([(4, 1f64 / 3f64), (5, 2f64 / 3f64)])],
+        4 => vec![HashMap::from([(4, 1.0)])],
+        5 => vec![HashMap::from([(5, 1.0)])],
+        _ => panic!("access invalid states"),
+    };
     let f = backward_mdp(state_num, &delta1, &bad_states);
     let d_lambda = ProbMapE {
         map: HashMap::from([(0, Eps(0.5, false))]),
         other: 1.0,
     };
-    let result = lt_pdr(Options { print: PrintAll }, heuristics_mdp(delta1, bad_states), &f, d_lambda);
+    let result = lt_pdr(
+        Config { print: PrintAll },
+        heuristics_mdp(delta1, bad_states),
+        &f,
+        d_lambda,
+    );
     println!("{result}");
 }
 
-type Delta<T> = HashMap<KeyInt, Vec<HashMap<KeyInt, T>>>;
-fn backward_mdp<T: One>(state_num: u64, delta: &Delta<T>, bad_states: &dyn Fn(KeyInt) -> bool) -> impl Fn(&ProbMapE<T>) -> ProbMapE<T> {
-    |prob_map| {
-        ProbMapE { map: HashMap::new(), other: one() }
+type Delta<T> = fn(KeyInt) -> Vec<HashMap<KeyInt, T>>;
+fn backward_mdp<'a, T: Zero + One + Clone + Mul + Add + PartialOrd>(
+    state_num: u64,
+    delta: &'a Delta<T>,
+    bad_states: &'a dyn Fn(KeyInt) -> bool,
+) -> impl Fn(&ProbMapE<T>) -> ProbMapE<T> + 'a {
+    move |prob_map| {
+        let map: HashMap<KeyInt, Eps<T>> = HashMap::from_iter((0..state_num).filter_map(|s| {
+            if bad_states(s) {
+                None
+            } else {
+                let other: T = delta(s)
+                    .iter()
+                    .map(|f| {
+                        let mut result: T = zero();
+                        for (ns, p) in f.iter() {
+                            result = result + prob_map.get(ns).0 * p.clone();
+                        }
+                        result
+                    })
+                    .fold(zero(), |acc, x| if acc.lt(&x) { x } else { acc });
+
+                Some((s, Eps(other, false)))
+            }
+        }));
+        ProbMapE { map, other: one() }
     }
 }
 
 type KeyInt = u64;
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Eps<T>(T, bool); // (v, b) = if b then v+epsilon else v
-#[derive(Debug)]
+#[derive(PartialEq, Eq, Debug)]
 pub struct ProbMapE<T> {
     // s |-> if s in supp(map) then map(s) else n
     map: HashMap<KeyInt, Eps<T>>,

@@ -1,5 +1,6 @@
 use crate::PDRAnswer::*;
 use crate::Verbosity::*;
+use std::cmp::PartialEq;
 use std::fmt;
 use std::fmt::Debug;
 
@@ -89,7 +90,7 @@ fn print_kt_kl<T: Debug>(opt: &Config, current: &KTKl<T>, rule: &str) {
     }
 }
 
-pub fn lt_pdr<T: CLat + Debug>(
+pub fn lt_pdr<T: CLat + PartialEq + Debug>(
     opt: Config,
     heuristics: Heuristics<T>,
     f: &dyn Fn(&T) -> T,
@@ -148,10 +149,10 @@ pub fn lt_pdr<T: CLat + Debug>(
     }
 }
 
-fn check_valid<T: CLat>(xs: &KTSeq<T>) -> bool {
+fn check_valid<T: CLat + PartialEq>(xs: &KTSeq<T>) -> bool {
     let mut result = false;
     for i in 0..(xs.len() - 1) {
-        result |= xs[i + 1].le(&xs[i]).0;
+        result |= xs[i + 1] == xs[i];
     }
     result
 }
