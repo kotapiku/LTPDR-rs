@@ -2,8 +2,8 @@ use crate::*;
 use std::collections::HashSet;
 use std::hash::Hash;
 
-#[derive(Debug)]
-pub struct PS<'a, T> {
+#[derive(Debug, PartialEq)]
+pub struct PS<'a, T: std::cmp::Eq + Hash> {
     pub all: &'a HashSet<T>,
     pub subset: HashSet<T>,
 }
@@ -124,7 +124,7 @@ mod tests {
         let all = HashSet::from_iter(1..6);
         let f = forward_ps(&init, &delta1);
         let alpha = PS {
-            all,
+            all: &all,
             subset: HashSet::from_iter(1..5),
         };
         let result = lt_pdr(Config::default_opt(), heuristics_sts(), &f, alpha);
@@ -136,7 +136,7 @@ mod tests {
         let all = HashSet::from_iter(1..6);
         let f = forward_ps(&init, &delta1);
         let alpha = PS {
-            all,
+            all: &all,
             subset: HashSet::from_iter(1..3),
         };
         let result = lt_pdr(Config::default_opt(), heuristics_sts(), &f, alpha);
